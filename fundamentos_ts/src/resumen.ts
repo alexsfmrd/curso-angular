@@ -9,6 +9,9 @@ export function crearResumen(actividades: Actividad[]): ResumenActividades {
     titulosPrioridadAlta: actividades
       .filter((actividad) => actividad.prioridad === 'alta')
       .map((actividad) => actividad.titulo),
+    porcentajeCompletadas: actividades.length > 0
+      ? (actividades.filter((actividad) => actividad.estado === 'completada').length / actividades.length) * 100
+      : 0,
   };
 }
 
@@ -23,5 +26,6 @@ export function presentarResumen(resumen: ResumenActividades): string {
     `En progreso: ${resumen.enProgreso}`,
     `Completadas: ${resumen.completadas}`,
     `Prioridad alta: ${titulos}`,
+    `Porcentaje completadas: ${resumen.porcentajeCompletadas}%`,
   ].join('\n');
 }

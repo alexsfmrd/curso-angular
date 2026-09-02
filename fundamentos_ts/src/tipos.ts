@@ -15,4 +15,5 @@ export interface ResumenActividades {
   enProgreso: number;
   completadas: number;
   titulosPrioridadAlta: string[];
+  porcentajeCompletadas: number;
 }
