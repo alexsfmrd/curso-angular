@@ -9,10 +9,9 @@ import type { Actividad } from '../../models/actividad';
   styleUrl: './lista-actividades.css',
 })
 export class ListaActividades {
-  protected readonly actividades: Actividad[] = [
-    { id: 1, titulo: 'Preparar estructura HTML', estado: 'completada', prioridad: 'alta', creadaEn: '2026-08-10' },
-    { id: 2, titulo: 'Revisar contraste', estado: 'en_progreso', prioridad: 'media', creadaEn: '2026-08-12' },
-    { id: 3, titulo: 'Practicar TypeScript', estado: 'pendiente', prioridad: 'alta', creadaEn: '2026-08-14' },
-    { id: 4, titulo: 'Escribir documentación', estado: 'pendiente', prioridad: 'baja', creadaEn: '2026-08-16' },
+   protected readonly actividades: Actividad[] = [
+    { id: 1, titulo: 'Preparar estructura HTML', estado: 'completada', prioridad: 'alta', creadaEn: '2026-08-10', destacada: false },
+    { id: 2, titulo: 'Revisar contraste', estado: 'en_progreso', prioridad: 'media', creadaEn: '2026-08-12', destacada: false },
+    { id: 3, titulo: 'Practicar TypeScript', estado: 'pendiente', prioridad: 'alta', creadaEn: '2026-08-14', destacada: false },
   ];
 }
