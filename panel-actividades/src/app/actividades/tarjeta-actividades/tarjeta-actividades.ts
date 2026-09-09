@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import type { EstadoActividad, Prioridad } from '../../models/actividad';
+import { Component, computed, input, output } from '@angular/core';
+import { Actividad, ETIQUETAS, } from '../../models/actividad';
 
 @Component({
   selector: 'app-tarjeta-actividades',
@@ -8,27 +8,22 @@ import type { EstadoActividad, Prioridad } from '../../models/actividad';
   styleUrl: './tarjeta-actividades.css',
 })
 export class TarjetaActividades {
-  protected readonly titulo = 'Practicar TypeScript';
-  protected readonly descripcion = 'Conectar contratos tipados con un template Angular.';
-  protected readonly prioridad: Prioridad = 'alta';
-  protected estado: EstadoActividad = 'pendiente';
-  protected detallesVisibles = false;
+  readonly actividad = input.required<Actividad>();
+  readonly seleccionada = input(false);
+
+  readonly seleccionCambiada = output<number>();
+  readonly destacadoCambiado = output<number>();
+  readonly avanceSolicitado = output<number>();
+  readonly eliminacionSolicitada = output<number>();
+
+  protected readonly etiquetaEstado = computed(() => ETIQUETAS[this.actividad().estado]);
+
+  protected readonly etiquetaEliminar = computed(() => `Eliminar ${this.actividad().titulo}`);
 
   protected get porcentaje(): number {
-    if (this.estado === 'completada') return 100;
-    if (this.estado === 'en_progreso') return 60;
-    return 20;
-  }
-
-  protected alternarDetalles(): void {
-    this.detallesVisibles = !this.detallesVisibles;
-  }
-
-  protected avanzarEstado(): void {
-    if (this.estado === 'pendiente') {
-      this.estado = 'en_progreso';
-    } else if (this.estado === 'en_progreso') {
-      this.estado = 'completada';
-    }
+    if (this.actividad().estado === 'completada') return 100;
+    if (this.actividad().estado === 'en_progreso') return 60;
+    if (this.actividad().estado === 'pendiente') return 10;
+    return 0;
   }
 }

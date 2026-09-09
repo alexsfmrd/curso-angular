@@ -13,3 +13,9 @@ export interface Actividad {
   creadaEn: string;
   destacada: boolean;
 }
+
+export const ETIQUETAS: Record<EstadoActividad, string> = {
+  pendiente: 'Pendiente',
+  en_progreso: 'En progreso',
+  completada: 'Completada',
+};

@@ -1,19 +1,20 @@
-import { Component, signal, computed, effect} from '@angular/core';
-import {
-  Actividad,
-  EstadoActividad,
-  FiltroEstado,
-  FiltroPrioridad,
-  Prioridad,
-} from '../models/actividad';
+import { Component,computed,signal ,effect } from '@angular/core';
+import { TarjetaActividades } from '../tarjeta-actividades/tarjeta-actividades';
+import {FiltrosActividades} from '../filtros-actividades/filtros-actividades';
+import {PanelSeccion} from '../../compartido/panel-seccion/panel-seccion';
+import { ListaActividades } from '../lista-actividades/lista-actividades';
+import { ResumenActividades } from '../resumen-actividades/resumen-actividades';
+import { Prioridad,FiltroEstado,FiltroPrioridad,Actividad, EstadoActividad } from '../../models/actividad';
+
 
 @Component({
-  selector: 'app-tablero-prioridades',
-  imports: [],
-  templateUrl: './tablero-prioridades.html',
-  styleUrl: './tablero-prioridades.css',
+  selector: 'app-pagina-actividades',
+  imports: [ FiltrosActividades, PanelSeccion, ListaActividades, ResumenActividades, TarjetaActividades ],
+  templateUrl: './pagina-actividades.html',
+  styleUrl: './pagina-actividades.css',
 })
-export class TableroPrioridades {
+export class PaginaActividades {
+
   private readonly orden: Record<Prioridad, number> = { alta: 0, media: 1, baja: 2 };
   protected readonly termino = signal('');
   protected readonly filtroEstado = signal<FiltroEstado>('todas');
@@ -60,15 +61,10 @@ export class TableroPrioridades {
       creadaEn: '2026-08-18',
       destacada: false,
     },
-     {
-      id: 6,
-      titulo: 'Revisar la documentación de Angular',
-      estado: 'pendiente',
-      prioridad: 'media',
-      creadaEn: '2026-08-19',
-      destacada: false,
-    },
+
   ]);
+
+  protected readonly actividadesDestacadas = computed(() => this.actividades().filter((a) => a.destacada));
 
   protected readonly total = computed(() => this.actividades().length);
 
@@ -147,17 +143,6 @@ export class TableroPrioridades {
     return 'completada';
   }
 
-  protected buscar(evento: Event): void {
-    this.termino.set((evento.target as HTMLInputElement).value);
-  }
-
-  protected cambiarFiltroEstado(evento: Event): void {
-    this.filtroEstado.set((evento.target as HTMLSelectElement).value as FiltroEstado);
-  }
-
-  protected cambiarFiltroPrioridad(evento: Event): void {
-    this.filtroPrioridad.set((evento.target as HTMLSelectElement).value as FiltroPrioridad);
-  }
 
   protected limpiarFiltros(): void {
     this.termino.set('');
@@ -176,4 +161,8 @@ export class TableroPrioridades {
     this.limpiarFiltros();
     this.seleccionadaId.set(null);
   }
+
+
+
+
 }

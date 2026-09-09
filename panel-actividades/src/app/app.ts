@@ -1,15 +1,12 @@
-import { TableroPrioridades } from './tablero-prioridades/tablero-prioridades';
 import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { ResumenActividades } from './actividades/resumen-actividades/resumen-actividades';
-import {ListaActividades} from './actividades/lista-actividades/lista-actividades';
-import { TarjetaActividades } from './actividades/tarjeta-actividades/tarjeta-actividades';
+import { PaginaActividades } from './actividades/pagina-actividades/pagina-actividades';
 
 
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, ResumenActividades, ListaActividades,TarjetaActividades, TableroPrioridades],
+  imports: [RouterOutlet, PaginaActividades],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
