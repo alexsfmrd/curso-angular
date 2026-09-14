@@ -7,11 +7,7 @@
     Prioridad {{ actividad().prioridad }}
   </p>
   <p class="estado" [class]="'estado ' + 'estado-' + actividad().estado">{{ etiquetaEstado() }}</p>
-  <div class="barra-progreso" role="progressbar" aria-label="Progreso de la actividad destacada" aria-valuemin="0"
-    aria-valuemax="100" [attr.aria-valuenow]="porcentaje">
-    <span [style.width.%]="porcentaje"></span>
-  </div>
-    <p class="porcentaje">{{ porcentaje }}% completado</p>
+
   <div class="acciones">
     <button type="button" [attr.aria-pressed]="seleccionada()" (click)="seleccionCambiada.emit(actividad().id)">
       {{ seleccionada() ? 'Quitar selección' : 'Seleccionar' }}
