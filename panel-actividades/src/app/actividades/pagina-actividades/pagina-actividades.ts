@@ -1,4 +1,5 @@
-import { Component,computed,signal ,effect } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { ActividadesService } from '../actividades';
 import { TarjetaActividades } from '../tarjeta-actividades/tarjeta-actividades';
 import {FiltrosActividades} from '../filtros-actividades/filtros-actividades';
 import {PanelSeccion} from '../../compartido/panel-seccion/panel-seccion';
@@ -15,74 +16,26 @@ import { Prioridad,FiltroEstado,FiltroPrioridad,Actividad, EstadoActividad } fro
 })
 export class PaginaActividades {
 
+
+  private readonly servicio = inject(ActividadesService);
+  protected readonly actividades = this.servicio.actividades;
   private readonly orden: Record<Prioridad, number> = { alta: 0, media: 1, baja: 2 };
   protected readonly termino = signal('');
   protected readonly filtroEstado = signal<FiltroEstado>('todas');
   protected readonly filtroPrioridad = signal<FiltroPrioridad>('todas');
   protected readonly seleccionadaId = signal<number | null>(null);
-  protected readonly actividades = signal<Actividad[]>([
-    {
-      id: 1,
-      titulo: 'Preparar estructura HTML',
-      estado: 'completada',
-      prioridad: 'alta',
-      creadaEn: '2026-08-10',
-      destacada: false,
-    },
-    {
-      id: 2,
-      titulo: 'Revisar contraste',
-      estado: 'en_progreso',
-      prioridad: 'media',
-      creadaEn: '2026-08-12',
-      destacada: true,
-    },
-    {
-      id: 3,
-      titulo: 'Practicar TypeScript',
-      estado: 'pendiente',
-      prioridad: 'alta',
-      creadaEn: '2026-08-14',
-      destacada: false,
-    },
-    {
-      id: 4,
-      titulo: 'Comprobar vista estrecha',
-      estado: 'pendiente',
-      prioridad: 'baja',
-      creadaEn: '2026-08-16',
-      destacada: false,
-    },
-    {
-      id: 5,
-      titulo: 'Ejecutar el build',
-      estado: 'pendiente',
-      prioridad: 'media',
-      creadaEn: '2026-08-18',
-      destacada: false,
-    },
 
-  ]);
 
   protected readonly actividadesDestacadas = computed(() => this.actividades().filter((a) => a.destacada));
 
-  protected readonly total = computed(() => this.actividades().length);
+  protected readonly total = this.servicio.total;
+  protected readonly pendientes = this.servicio.pendientes;
+  protected readonly enProgreso = this.servicio.enProgreso;
+  protected readonly completadas = this.servicio.completadas;
+  protected readonly porcentaje = this.servicio.porcentaje;
 
-  protected readonly pendientes = computed(
-    () => this.actividades().filter((a) => a.estado === 'pendiente').length,
-  );
-
-  protected readonly enProgreso = computed(
-    () => this.actividades().filter((a) => a.estado === 'en_progreso').length,
-  );
-
-  protected readonly completadas = computed(
-    () => this.actividades().filter((a) => a.estado === 'completada').length,
-  );
-
-  protected readonly porcentaje = computed(() =>
-    this.total() === 0 ? 0 : Math.round((this.completadas() / this.total()) * 100),
-  );
+  protected readonly aviso = this.servicio.aviso;
+  protected readonly sinGuardar = this.servicio.sinGuardar;
 
   protected readonly visibles = computed(() => {
     const termino = this.termino().trim().toLocaleLowerCase('es');
@@ -121,19 +74,15 @@ export class PaginaActividades {
   }
 
   protected alternarDestacada(id: number): void {
-    this.actividades.update((actuales) =>
-      actuales.map((a) => (a.id === id ? { ...a, destacada: !a.destacada } : a)),
-    );
+    this.servicio.alternarDestacada(id);
   }
 
   protected avanzarEstado(id: number): void {
-    this.actividades.update((actuales) =>
-      actuales.map((a) => (a.id === id ? { ...a, estado: this.siguienteEstado(a.estado) } : a)),
-    );
+    this.servicio.avanzarEstado(id);
   }
 
   protected eliminar(id: number): void {
-    this.actividades.update((actuales) => actuales.filter((a) => a.id !== id));
+    this.servicio.eliminar(id);
     this.seleccionadaId.update((actual) => (actual === id ? null : actual));
   }
 
@@ -151,13 +100,11 @@ export class PaginaActividades {
   }
 
   constructor() {
-    effect(() => {
-      console.info(`[Tablero] ${this.mostradas()} de ${this.total()} visibles`);
-    });
+
   }
 
   protected restablecer(): void {
-    this.actividades.set([]);
+    this.servicio.vaciar();
     this.limpiarFiltros();
     this.seleccionadaId.set(null);
   }
