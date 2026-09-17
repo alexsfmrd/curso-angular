@@ -11,7 +11,11 @@
         (destacadoCambiado)="destacadoCambiado.emit($event)"
         (avanceSolicitado)="avanceSolicitado.emit($event)"
         (eliminacionSolicitada)="eliminacionSolicitada.emit($event)" />
+        <a class="enlace-detalle" [routerLink]="['/actividades', actividad.id]">
+        Ver detalle de {{ actividad.titulo }}
+      </a>
     </li>
+
   } @empty {
     <li class="vacio">
       <p>{{ mensajeVacio() }}</p>
