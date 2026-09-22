@@ -12,8 +12,14 @@ export interface Actividad {
   prioridad: Prioridad;
   creadaEn: string;
   destacada: boolean;
-}
+  descripcion: string;
 
+}
+export const LIMITES = {
+  tituloMin: 3,
+  tituloMax: 80,
+  descripcionMax: 300,
+} as const;
 export const ETIQUETAS: Record<EstadoActividad, string> = {
   pendiente: 'Pendiente',
   en_progreso: 'En progreso',
@@ -44,7 +50,8 @@ export function esActividad(valor: unknown): valor is Actividad {
     esEstadoActividad(valor['estado']) &&
     esPrioridad(valor['prioridad']) &&
     typeof valor['creadaEn'] === 'string' &&
-    typeof valor['destacada'] === 'boolean'
+    typeof valor['destacada'] === 'boolean' &&
+    typeof valor['descripcion'] === 'string'
   );
 }
 
