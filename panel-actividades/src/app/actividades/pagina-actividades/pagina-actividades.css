@@ -1,2 +1,13 @@
-.mensaje-vacio { border: 1px dashed #949494; border-radius: 0.5rem; padding: 1.5rem; text-align: center; }
-.aviso { margin: 0; border: 1px solid #949494; border-radius: 0.5rem; padding: 0.5rem 0.75rem; }
+.mensaje-vacio {
+  border: 1px dashed #949494;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.cargando, .error {
+  margin: 0;
+  border: 1px solid #949494;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}

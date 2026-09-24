@@ -7,7 +7,9 @@ import {PanelSeccion} from '../../compartido/panel-seccion/panel-seccion';
 import { ListaActividades } from '../lista-actividades/lista-actividades';
 import { ResumenActividades } from '../resumen-actividades/resumen-actividades';
 import { Prioridad,FiltroEstado,FiltroPrioridad,Actividad, EstadoActividad } from '../../models/actividad';
-
+import { toObservable,takeUntilDestroyed  } from '@angular/core/rxjs-interop';
+import { debounceTime,of,switchMap } from 'rxjs';
+import { ActividadesApi } from '../../api/actividades-api';
 
 @Component({
   selector: 'app-pagina-actividades',
@@ -17,16 +19,27 @@ import { Prioridad,FiltroEstado,FiltroPrioridad,Actividad, EstadoActividad } fro
 })
 export class PaginaActividades {
 
-
+  private readonly servicio = inject(ActividadesService);
+  private readonly api = inject(ActividadesApi);
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
+
+  protected readonly actividades = this.servicio.actividades;
+  protected readonly cargando = this.servicio.cargando;
+  protected readonly errorCarga = this.servicio.error;
+  protected readonly total = this.servicio.total;
+  protected readonly pendientes = this.servicio.pendientes;
+  protected readonly enProgreso = this.servicio.enProgreso;
+  protected readonly completadas = this.servicio.completadas;
+  protected readonly porcentaje = this.servicio.porcentaje;
+
+
   readonly buscar = input<string | undefined>('');
   readonly estado = input<FiltroEstado | undefined>('todas');
   readonly prioridad = input<FiltroPrioridad | undefined>('todas');
 
+  protected readonly resultados = signal<Actividad[] | null>(null);
 
-  private readonly servicio = inject(ActividadesService);
-  protected readonly actividades = this.servicio.actividades;
   private readonly orden: Record<Prioridad, number> = { alta: 0, media: 1, baja: 2 };
 
   protected readonly termino = computed(() => this.buscar() ?? '');
@@ -36,13 +49,10 @@ export class PaginaActividades {
   protected readonly seleccionadaId = signal<number | null>(null);
 
 
+
   protected readonly actividadesDestacadas = computed(() => this.actividades().filter((a) => a.destacada));
 
-  protected readonly total = this.servicio.total;
-  protected readonly pendientes = this.servicio.pendientes;
-  protected readonly enProgreso = this.servicio.enProgreso;
-  protected readonly completadas = this.servicio.completadas;
-  protected readonly porcentaje = this.servicio.porcentaje;
+
 
   protected readonly aviso = this.servicio.aviso;
   protected readonly sinGuardar = this.servicio.sinGuardar;
@@ -127,9 +137,20 @@ export class PaginaActividades {
     });
   }
 
+  protected recargar(): void {
+    this.servicio.cargar();
+  }
+
 
 
   constructor() {
+    toObservable(this.termino)
+      .pipe(
+        debounceTime(300),
+        switchMap((t) => (t.trim() === '' ? of(null) : this.api.buscar(t))),
+        takeUntilDestroyed(),
+      )
+      .subscribe((r) => this.resultados.set(r));
 
   }
 

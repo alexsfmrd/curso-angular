@@ -1,32 +1,25 @@
-import { computed, inject, Service, signal } from '@angular/core';
-import { AlmacenamientoService } from '../compartido/almacenamiento';
-import { Actividad, EstadoActividad, Prioridad,LIMITES, esColeccionActividades } from '../models/actividad';
-
-const CLAVE = 'panel.actividades.v1';
-
-const INICIALES: readonly Actividad[] = [
-  { id: 1, titulo: 'Preparar estructura HTML', estado: 'completada', prioridad: 'alta', creadaEn: '2026-08-10', destacada: false, descripcion: '' },
-  { id: 2, titulo: 'Revisar contraste', estado: 'en_progreso', prioridad: 'media', creadaEn: '2026-08-12', destacada: true, descripcion: '' },
-  { id: 3, titulo: 'Practicar TypeScript', estado: 'pendiente', prioridad: 'alta', creadaEn: '2026-08-14', destacada: false, descripcion: '' },
-  { id: 4, titulo: 'Comprobar vista estrecha', estado: 'pendiente', prioridad: 'baja', creadaEn: '2026-08-16', destacada: false, descripcion: '' },
-  { id: 5, titulo: 'Ejecutar el build', estado: 'pendiente', prioridad: 'media', creadaEn: '2026-08-18', destacada: false, descripcion: '' },
-];
+import { Service, computed, inject, signal } from '@angular/core';
+import { catchError, finalize, of, retry, timer } from 'rxjs';
+import { ActividadesApi } from '../api/actividades-api';
+import { Actividad, EstadoActividad, LIMITES, Prioridad } from '../models/actividad';
+import { mensajeDe } from '../api/mensajes';
 
 @Service()
 export class ActividadesService {
-  private readonly almacen = inject(AlmacenamientoService);
 
-  private readonly lista = signal<Actividad[]>(INICIALES.map((a) => ({ ...a })));
+  private readonly api = inject(ActividadesApi);
+  private readonly lista = signal<Actividad[]>([]);
 
   readonly actividades = this.lista.asReadonly();
+  readonly cargando = signal(false);
+  readonly error = signal('');
+
   readonly aviso = signal('');
   readonly sinGuardar = signal(false);
 
   readonly total = computed(() => this.lista().length);
 
-  readonly pendientes = computed(
-    () => this.lista().filter((a) => a.estado === 'pendiente').length,
-  );
+  readonly pendientes = computed(() => this.lista().filter((a) => a.estado === 'pendiente').length);
 
   readonly enProgreso = computed(
     () => this.lista().filter((a) => a.estado === 'en_progreso').length,
@@ -42,25 +35,20 @@ export class ActividadesService {
 
   constructor() {
     this.cargar();
-    window.addEventListener('storage', (evento) => {
-      if (evento.key === CLAVE) {
-        this.cargar();
-      }
-    });
   }
 
   buscarPorId(id: number): Actividad | undefined {
     return this.lista().find((a) => a.id === id);
   }
 
-  crear(titulo: string, descripcion: string, prioridad: Prioridad): Actividad | null {
+ crear(titulo: string, descripcion: string, prioridad: Prioridad): Actividad | null {
     const limpio = titulo.trim();
 
     if (!this.tituloAceptable(limpio, null)) {
       return null;
     }
 
-    const nueva: Actividad = {
+    const provisional: Actividad = {
       id: this.siguienteId(),
       titulo: limpio,
       descripcion: descripcion.trim(),
@@ -70,23 +58,35 @@ export class ActividadesService {
       destacada: false,
     };
 
-    this.aplicar((actual) => [...actual, nueva]);
-    return nueva;
-  }
 
+    this.lista.update((actual) => [...actual, provisional]);
+
+    this.api
+      .crear({ titulo: limpio, descripcion: descripcion.trim(), prioridad, completada: false })
+      .pipe(catchError((e: unknown) => this.deshacer(provisional.id, e)))
+      .subscribe((guardada) => {
+        if (guardada) {
+
+          this.reemplazar(provisional.id, guardada);
+        } else {
+
+          this.error.set('La respuesta del servidor no incluyó un ID válido.');
+          this.lista.update((actual) => actual.filter((a) => a.id !== provisional.id));
+        }
+      });
+
+    return provisional;
+  }
   actualizar(id: number, titulo: string, descripcion: string, prioridad: Prioridad): boolean {
     const limpio = titulo.trim();
+    const anterior = this.buscarPorId(id);
 
-    if (!this.buscarPorId(id) || !this.tituloAceptable(limpio, id)) {
+    if (!anterior || !this.tituloAceptable(limpio, id)) {
       return false;
     }
 
-    this.aplicar((actual) =>
-      actual.map((a) =>
-        a.id === id ? { ...a, titulo: limpio, descripcion: descripcion.trim(), prioridad } : a,
-      ),
-    );
-
+    this.aplicarLocal(id, { titulo: limpio, descripcion: descripcion.trim(), prioridad });
+    this.enviar(id);
     return true;
   }
 
@@ -97,59 +97,104 @@ export class ActividadesService {
 
     const normal = limpio.toLocaleLowerCase('es');
 
-    return !this.lista().some(
-      (a) => a.id !== salvo && a.titulo.toLocaleLowerCase('es') === normal,
-    );
+    return !this.lista().some((a) => a.id !== salvo && a.titulo.toLocaleLowerCase('es') === normal);
   }
 
   private siguienteId(): number {
-    return this.lista().reduce((mayor, a) => Math.max(mayor, a.id), 0) + 1;
-  }
-
-  alternarDestacada(id: number): void {
-    this.aplicar((actual) =>
-      actual.map((a) => (a.id === id ? { ...a, destacada: !a.destacada } : a)),
+    return (
+      this.lista().reduce((mayor, a) => {
+        const idNumerico = Number(a.id);
+        return !isNaN(idNumerico) ? Math.max(mayor, idNumerico) : mayor;
+      }, 0) + 1
     );
+  }
+  alternarDestacada(id: number): void {
+    this.aplicarLocal(id, { destacada: !this.buscarPorId(id)?.destacada });
   }
 
   avanzarEstado(id: number): void {
-    this.aplicar((actual) =>
-      actual.map((a) => (a.id === id ? { ...a, estado: this.siguienteEstado(a.estado) } : a)),
-    );
+    const actividad = this.buscarPorId(id);
+    if (!actividad) return;
+
+    this.aplicarLocal(id, { estado: this.siguienteEstado(actividad.estado) });
+    this.enviar(id);
   }
 
   eliminar(id: number): void {
-    this.aplicar((actual) => actual.filter((a) => a.id !== id));
+    const anterior = this.buscarPorId(id);
+    if (!anterior) return;
+
+    this.lista.update((actual) => actual.filter((a) => a.id !== id));
+
+    this.api
+      .eliminar(id)
+      .pipe(
+        catchError((e: unknown) => {
+          this.error.set(mensajeDe(e));
+          this.lista.update((actual) => [...actual, anterior]);
+          return of(undefined);
+        }),
+      )
+      .subscribe();
+  }
+
+  private enviar(id: number): void {
+    const actividad = this.buscarPorId(id);
+    if (!actividad) return;
+
+    this.api
+      .actualizar(id, {
+        titulo: actividad.titulo,
+        descripcion: actividad.descripcion,
+        prioridad: actividad.prioridad,
+        completada: actividad.estado === 'completada',
+      })
+      .pipe(
+        catchError((e: unknown) => {
+          this.error.set(mensajeDe(e));
+          return of(null);
+        }),
+      )
+      .subscribe();
+  }
+
+  private deshacer(id: number, e: unknown) {
+    this.error.set(mensajeDe(e));
+    this.lista.update((actual) => actual.filter((a) => a.id !== id));
+    return of(null);
+  }
+
+  private reemplazar(provisional: number, guardada: Actividad): void {
+    this.lista.update((actual) => actual.map((a) => (a.id === provisional ? guardada : a)));
+  }
+
+  private aplicarLocal(id: number, cambios: Partial<Actividad>): void {
+    this.lista.update((actual) => actual.map((a) => (a.id === id ? { ...a, ...cambios } : a)));
   }
 
   vaciar(): void {
     this.aplicar(() => []);
   }
 
-
-
   private aplicar(cambio: (actual: Actividad[]) => Actividad[]): void {
     this.lista.update(cambio);
-    this.guardar();
   }
 
-  private guardar(): void {
-    this.sinGuardar.set(!this.almacen.guardar(CLAVE, this.lista()));
-  }
+  cargar(): void {
+    this.cargando.set(true);
+    this.error.set('');
 
-  private cargar(): void {
-    if (!this.almacen.existe(CLAVE)) {
-      return;
-    }
-
-    const valor = this.almacen.leer(CLAVE);
-
-    if (!esColeccionActividades(valor)) {
-      this.aviso.set('Lo que había guardado no se pudo leer. Empiezas con las actividades de ejemplo.');
-      return;
-    }
-
-    this.lista.set(valor.map((a) => ({ ...a })));
+    this.api
+      .listar()
+      .pipe(
+        retry({ count: 2, delay: (_, intento) => timer(intento * 300) }),
+        catchError((e: unknown) => {
+          this.error.set(mensajeDe(e));
+          return of<Actividad[]>([]);
+        }),
+        finalize(() => this.cargando.set(false)),
+      )
+      .subscribe((actividades) => this.lista.set(actividades));
   }
 
   private siguienteEstado(estado: EstadoActividad): EstadoActividad {

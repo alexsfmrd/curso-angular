@@ -4,6 +4,7 @@ import { DetalleActividad } from './actividades/detalle-actividad/detalle-activi
 import { SeccionActividades } from './actividades/seccion-actividades/seccion-actividades';
 import { PaginaNoEncontrada } from './compartido/pagina-no-encontrada/pagina-no-encontrada';
 import { puedeSalir } from './actividades/puede-salir';
+import { PaginaSugerencias } from './sugerencias/pagina-sugerencias/pagina-sugerencias';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'actividades', pathMatch: 'full' },
@@ -43,6 +44,14 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./estadisticas/pagina-estadisticas/pagina-estadisticas').then(
         (m) => m.PaginaEstadisticas,
+      ),
+  },
+  {
+    path: 'sugerencias',
+    title: 'Sugerencias',
+    loadComponent: () =>
+      import('./sugerencias/pagina-sugerencias/pagina-sugerencias').then(
+        (m) => m.PaginaSugerencias,
       ),
   },
 
